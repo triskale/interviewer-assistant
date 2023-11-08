@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Audio Recorder",
+  "version": "1.0",
+  "permissions": ["tabCapture", "storage", "scripting", "downloads"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Toggle Recording"
+  },
+  "host_permissions": ["<all_urls>"]
+}
