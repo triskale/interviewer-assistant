@@ -8,14 +8,26 @@
 </head>
 <body>
     <div class="container">
-        <input type="text" id="additional-prompt" placeholder="Additional prompt?" class="input">
-        <button id="toggle-recording" class="button">Record</button>
         <div class="content" id="transcription"></div>
         <div class="spinner" id="transcription-spinner" style="display: none;"></div>
         <div class="content" id="answer"></div>
         <div class="spinner" id="answer-spinner" style="display: none"></div>
+        <div class="buttons-container">
+            <button id="toggle-settings" class="settings">☰</button>
+            <button id="toggle-recording" class="button">Record</button>
+        </div>
+    <div id="settings" style="display: none;">
+        <div>
+            <input type="text" id="apiKey" class="input" placeholder="OpenAI API Key"">
+        </div>
+        <div>
+            <input type="text" id="role" class="input" placeholder="What role? (optional)">
+        </div>
+        <div>
+            <input type="text" id="interviewType" class="input" placeholder="What type of interview? (optional)">
+        </div>
     </div>
-
+    </div>
     <script src="popup.js"></script>
 </body>
 </html>
