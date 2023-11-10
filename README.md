@@ -10,4 +10,4 @@
 6) Wait a few seconds for transcription and answers or questions!
 
 ### Screenshot
-<img width="419" alt="image" src="https://github.com/triskale/interviewer-assistant/assets/23164723/cd518110-43c5-421f-8811-44256f0481e8">
+<img width="396" alt="image" src="https://github.com/triskale/interviewer-assistant/assets/23164723/1dd7a219-4e4a-452b-856d-e843790bef15">
