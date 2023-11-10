@@ -77,32 +77,35 @@ function setupRecording() {
 function startCapture() {
   return new Promise((resolve, reject) => {
     chrome.tabCapture.capture({ audio: true, video: false }, (stream) => {
-      if (chrome.runtime.lastError || !stream) {
+if (chrome.runtime.lastError || !stream) {
         reject(chrome.runtime.lastError?.message);
         return;
       }
-      context.createMediaStreamSource(stream).connect(context.destination);
+        context.createMediaStreamSource(stream).connect(context.destination);
 
-      isRecording = true;
-      audioChunks = [];
-      recorder = new MediaRecorder(stream);
+        isRecording = true;
+        audioChunks = [];
+        recorder = new MediaRecorder(stream);
 
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunks.push(event.data);
-        }
-      };
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunks.push(event.data);
+          }
+        };
 
-      recorder.onstop = exportRecording;
+        recorder.onstop = exportRecording;
 
-      recorder.onerror = (event) => {
-        console.error("Recorder Error: ", event.error);
-        reject(event.error);
-      };
+        recorder.onerror = (event) => {
+          console.error("Recorder Error: ", event.error);
+          reject(event.error);
+        };
 
-      recorder.start();
-      resolve();
-    });
+        recorder.start();
+        resolve();
+      })
+      .catch((error) => {
+        reject(error);
+      });
   });
 }
 
@@ -126,15 +129,6 @@ function exportRecording() {
   fetchTranscription(formData);
 }
 
-function displayTranscription(transcription) {
-  elements.transcription.textContent = transcription;
-  elements.transcription.style.display = "block";
-}
-
-function displayAnswer(answer) {
-  elements.answer.innerHTML = answer;
-  elements.answer.style.display = "block";
-}
 
 function showSpinner(type) {
   document.getElementById(type).style.display = "none";
@@ -158,7 +152,8 @@ function fetchTranscription(body) {
     .then((data) => {
       const transcription = data.text;
       hideSpinner("transcription");
-      displayTranscription(transcription);
+      elements.transcription.textContent = transcription;
+      elements.transcription.style.display = "block";
       askQuestion(transcription);
       localStorage.setItem("transcription", transcription);
     })
@@ -179,8 +174,10 @@ function fetchAnswer(body) {
     .then((response) => response.json())
     .then((data) => {
       hideSpinner("answer");
-      displayAnswer(data.choices[0].message.content);
-      localStorage.setItem("answer", elements.answer.innerHTML);
+      const { content } = data.choices[0].message
+      elements.answer.innerHTML = content;
+      elements.answer.style.display = "block";
+      localStorage.setItem("answer", content);
     })
     .catch((error) => {
       console.error("Error getting answer:", error);
@@ -211,7 +208,8 @@ function askQuestion(transcription) {
 
   messages.push({
     role: "system",
-    content: "You respond in bullet points in a very concise manner (as they need to read it while talking) in a very concise manner (as they need to read it while talking). Please make sure to not mention more than 4 bullet points. If needed add a bit of explanation next to the bullet point but keep it concise. You might get confusing context or questions, you are being given a transcript of an interview. You ALWAYS stick to answering in bullet points, without asking for more information and you don't introduce anything or conclude anything. If you really can't answer anything you reply ERROR. Please use html tags like <ul> to display the list. You use a maximum of 150 tokens.",
+    content:
+      "You respond in bullet points in a very concise manner (as they need to read it while talking) in a very concise manner (as they need to read it while talking). Please make sure to not mention more than 4 bullet points. If needed add a bit of explanation next to the bullet point but keep it concise. You might get confusing context or questions, you are being given a transcript of an interview. You ALWAYS stick to answering in bullet points, without asking for more information and you don't introduce anything or conclude anything. If you really can't answer anything you reply ERROR. Please use html tags like <ul> to display the list. You use a maximum of 150 tokens.",
   });
 
   if (elements.role.value) {
@@ -241,5 +239,5 @@ function askQuestion(transcription) {
   };
 
   showSpinner("answer");
-  fetchAnswer(JSON.stringify(payload))
+  fetchAnswer(JSON.stringify(payload));
 }
