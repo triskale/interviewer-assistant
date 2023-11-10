@@ -13,21 +13,31 @@
         <div class="content" id="answer"></div>
         <div class="spinner" id="answer-spinner" style="display: none"></div>
         <div class="buttons-container">
-            <button id="toggle-settings" class="settings">☰</button>
-            <button id="toggle-recording" class="button">Record</button>
+            <button id="toggleSettings" class="settings">☰</button>
+            <button id="toggleRecording" class="button">Record</button>
         </div>
-    <div id="settings" style="display: none;">
+    <div id="settingsView" style="display: none;">
         <div>
             <input type="text" id="apiKey" class="input" placeholder="OpenAI API Key"">
         </div>
         <div>
-            <input type="text" id="role" class="input" placeholder="What role? (optional)">
+            <label for="toggleRole">You are: </label>
+            <select id="toggleRole" class="input">
+                <option value="interviewer">Interviewing</option>
+                <option value="interviewee">Being Interviewed</option>
+            </select>
         </div>
         <div>
-            <input type="text" id="interviewType" class="input" placeholder="What type of interview? (optional)">
+            <label for="role">Seeking the role (optional): </label>
+            <input type="text" id="role" class="input" placeholder="Engineering Manager, Senior Frontend...">
+        </div>
+        <div>
+            <label for="interviewType">Type of interview (optional): </label>
+            <input type="text" id="interviewType" class="input" placeholder="Leadership, Coding...">
         </div>
     </div>
     </div>
     <script src="popup.js"></script>
+    <script src="recording.js"></script>
 </body>
 </html>

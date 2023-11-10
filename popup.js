@@ -1,50 +1,78 @@
+const elements = {
+  toggleSettings: document.getElementById("toggleSettings"),
+  toggleRecording: document.getElementById("toggleRecording"),
+  transcription: document.getElementById("transcription"),
+  answer: document.getElementById("answer"),
+  role: document.getElementById("role"),
+  apiKey: document.getElementById("apiKey"),
+  interviewType: document.getElementById("interviewType"),
+  roleToggle: document.getElementById("toggleRole"),
+  roleInput: document.getElementById("role"),
+  interviewTypeInput: document.getElementById("interviewType"),
+};
+
 let recorder = null;
 let isRecording = false;
 let audioChunks = [];
 let context = new AudioContext();
-let role, apiKey, interviewType;
 
-document
-  .getElementById("toggle-settings")
-  .addEventListener("click", function () {
-    const settingsElement = document.getElementById("settings");
-    settingsElement.style.display =
-      settingsElement.style.display === "none" ? "block" : "none";
+function initSettings() {
+  elements.apiKey.value = localStorage.getItem("apiKey") || "";
+  elements.role.value = localStorage.getItem("role") || "";
+  elements.interviewType.value = localStorage.getItem("interviewType") || "";
+  elements.transcription.textContent =
+    localStorage.getItem("transcription") || "no question yet";
+  elements.answer.innerHTML =
+    localStorage.getItem("answer") || "no answers yet";
+  elements.roleToggle.value =
+    localStorage.getItem("toggleRole") || "interviewer";
+}
+
+// Event listeners for settings changes
+function setupSettingsListeners() {
+  elements.toggleSettings.addEventListener("click", function () {
+    const settingsView = document.getElementById("settingsView");
+    settingsView.style.display =
+      settingsView.style.display === "none" ? "block" : "none";
   });
+  elements.roleToggle.addEventListener("change", function (event) {
+    localStorage.setItem("toggleRole", event.target.value);
+  });
+  elements.apiKey.addEventListener("change", function (event) {
+    localStorage.setItem("apiKey", event.target.value);
+  });
+  elements.roleInput.addEventListener("change", function (event) {
+    localStorage.setItem("role", event.target.value);
+  });
+  elements.interviewTypeInput.addEventListener("change", function (event) {
+    localStorage.setItem("interviewType", event.target.value);
+  });
+}
 
 document.addEventListener("DOMContentLoaded", function () {
-  const toggleBtn = document.getElementById("toggle-recording");
+  initSettings();
+  setupSettingsListeners();
+  setupRecording();
+});
 
-  const transcriptionElement = document.getElementById("transcription");
-  const answerElement = document.getElementById("answer");
-  role = document.getElementById("role");
-  apiKey = document.getElementById("apiKey");
-  interviewType = document.getElementById("interviewType");
-  apiKey.value = localStorage.getItem("apiKey") || "";
-  console.log(apiKey);
-  role.value = localStorage.getItem("role") || "";
-  interviewType.value = localStorage.getItem("interviewType") || "";
-  transcriptionElement.textContent =
-    localStorage.getItem("transcription") || "no question yet";
-  answerElement.innerHTML = localStorage.getItem("answer") || "no answers yet";
-
-  toggleBtn.addEventListener("click", function () {
+function setupRecording() {
+  elements.toggleRecording.addEventListener("click", function () {
     if (isRecording) {
       stopRecording();
-      toggleBtn.textContent = "Record";
-      toggleBtn.classList.remove("stop");
+      elements.toggleRecording.textContent = "Record";
+      elements.toggleRecording.classList.remove("stop");
     } else {
       startCapture()
         .then(() => {
-          toggleBtn.textContent = "Stop";
-          toggleBtn.classList.add("stop");
+          elements.toggleRecording.textContent = "Stop";
+          elements.toggleRecording.classList.add("stop");
         })
         .catch((error) => {
           console.error("Error starting capture:", error);
         });
     }
   });
-});
+}
 
 function startCapture() {
   return new Promise((resolve, reject) => {
@@ -73,7 +101,6 @@ function startCapture() {
       };
 
       recorder.start();
-      console.log("Recorder started");
       resolve();
     });
   });
@@ -83,7 +110,6 @@ function stopRecording() {
   if (recorder && isRecording) {
     recorder.stop();
     recorder.stream.getTracks().forEach((track) => track.stop());
-    console.log("Recorder stopped");
     isRecording = false;
   }
 }
@@ -93,17 +119,40 @@ function exportRecording() {
   const audioFile = new File([audioBlob], "recording.wav", {
     type: "audio/wav",
   });
-  // Prepare the form data to send to Whisper API
   let formData = new FormData();
   formData.append("file", audioFile);
   formData.append("model", "whisper-1");
   showSpinner("transcription");
+  fetchTranscription(formData);
+}
+
+function displayTranscription(transcription) {
+  elements.transcription.textContent = transcription;
+  elements.transcription.style.display = "block";
+}
+
+function displayAnswer(answer) {
+  elements.answer.innerHTML = answer;
+  elements.answer.style.display = "block";
+}
+
+function showSpinner(type) {
+  document.getElementById(type).style.display = "none";
+  document.getElementById(`${type}-spinner`).style.display = "block";
+}
+
+function hideSpinner(type) {
+  document.getElementById(type).style.display = "block";
+  document.getElementById(`${type}-spinner`).style.display = "none";
+}
+
+function fetchTranscription(body) {
   fetch("https://api.openai.com/v1/audio/transcriptions", {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${apiKey.value}`,
+      Authorization: `Bearer ${elements.apiKey.value}`,
     },
-    body: formData,
+    body,
   })
     .then((response) => response.json())
     .then((data) => {
@@ -118,32 +167,64 @@ function exportRecording() {
     });
 }
 
-function displayTranscription(transcription) {
-  const transcriptionElement = document.getElementById("transcription");
-  transcriptionElement.textContent = transcription;
-  transcriptionElement.style.display = "block";
+function fetchAnswer(body) {
+  fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${elements.apiKey.value}`,
+    },
+    body,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      hideSpinner("answer");
+      displayAnswer(data.choices[0].message.content);
+      localStorage.setItem("answer", elements.answer.innerHTML);
+    })
+    .catch((error) => {
+      console.error("Error getting answer:", error);
+    });
 }
 
 function askQuestion(transcription) {
   const messages = [
     {
       role: "system",
-      content:
-        "You are an interview assistant. You help the interviewer know what to expect from their questions. The user will present you with a dialog and you need to list in a very concise manner (as they need to read it while talking) the most important things to talk about to answer the question or scenario properly. You need to help them know what are the best answers to their questions. You respond in bullet points. Please make sure to not mention more than 4 bullet points. If needed add a bit of explanation next to the bullet point but keep it concise. You might get confusing context or questions, you are being given a transcript of an interview. You ALWAYS stick to answering in bullet points, without asking for more information and you don't introduce anything or conclude anything. If you really can't answer anything you reply ERROR. Please use html tags like <ul> to display the list. You use a maximum of 150 tokens.",
+      content: "You are a useful interview assistant.",
     },
   ];
 
-  if (role.value) {
+  if (elements.toggleRole.value === "interviewer") {
     messages.push({
       role: "system",
-      content: `You are assisting with finding the best ${role?.value}.`,
+      content:
+        "You help the interviewer ask relevant questions to the interviewee. The user will present you with a dialog and you need to list the most important things to ask the interviewee to get to know if they are a good candidate. You need to help them know what are the best questions and what topics to cover.",
+    });
+  } else {
+    messages.push({
+      role: "system",
+      content:
+        "You help the interviewer know what to expect from their questions. The user will present you with a dialog and you need to list the most important things to talk about to answer the question or scenario properly. You need to help them know what are the best answers to their questions.",
     });
   }
 
-  if (interviewType.value) {
+  messages.push({
+    role: "system",
+    content: "You respond in bullet points in a very concise manner (as they need to read it while talking) in a very concise manner (as they need to read it while talking). Please make sure to not mention more than 4 bullet points. If needed add a bit of explanation next to the bullet point but keep it concise. You might get confusing context or questions, you are being given a transcript of an interview. You ALWAYS stick to answering in bullet points, without asking for more information and you don't introduce anything or conclude anything. If you really can't answer anything you reply ERROR. Please use html tags like <ul> to display the list. You use a maximum of 150 tokens.",
+  });
+
+  if (elements.role.value) {
     messages.push({
       role: "system",
-      content: `This dialog is from a ${interviewType.value} interview`,
+      content: `You are assisting with finding the best ${elements.role?.value}.`,
+    });
+  }
+
+  if (elements.interviewType.value) {
+    messages.push({
+      role: "system",
+      content: `This dialog is from a ${elements.interviewType.value} interview`,
     });
   }
 
@@ -151,7 +232,7 @@ function askQuestion(transcription) {
     role: "user",
     content: `Interview Transcript: ${transcription}`,
   });
-  // Construct the request payload
+
   const payload = {
     model: "gpt-4-1106-preview",
     messages,
@@ -159,57 +240,6 @@ function askQuestion(transcription) {
     max_tokens: 170,
   };
 
-  // Make the API call to GPT-4
   showSpinner("answer");
-  fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey.value}`,
-    },
-    body: JSON.stringify(payload),
-  })
-    .then((response) => response.json())
-    .then((data) => {
-      hideSpinner("answer");
-      displayAnswer(data.choices[0].message.content);
-      localStorage.setItem("answer", answer.innerHTML);
-    })
-    .catch((error) => {
-      console.error("Error getting answer:", error);
-    });
+  fetchAnswer(JSON.stringify(payload))
 }
-
-function displayAnswer(answer) {
-  // Display the GPT-4 response in the popup
-  const answerElement = document.getElementById("answer");
-  answerElement.innerHTML = answer;
-  answerElement.style.display = "block";
-}
-
-function showSpinner(type) {
-  document.getElementById(type).style.display = "none";
-  document.getElementById(`${type}-spinner`).style.display = "block";
-}
-
-function hideSpinner(type) {
-  document.getElementById(type).style.display = "block";
-  document.getElementById(`${type}-spinner`).style.display = "none";
-}
-
-// Save setting inputs
-
-document.getElementById("apiKey").addEventListener("change", function (event) {
-  console.log("set", event.target);
-  localStorage.setItem("apiKey", event.target.value);
-});
-
-document.getElementById("role").addEventListener("change", function (event) {
-  localStorage.setItem("role", event.target.value);
-});
-
-document
-  .getElementById("interviewType")
-  .addEventListener("change", function (event) {
-    localStorage.setItem("interviewType", event.target.value);
-  });
